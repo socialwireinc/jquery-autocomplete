@@ -27,6 +27,8 @@
         } else if (typeof options === 'string') {
             url = options;
             options = { url: url };
+        } else if ($.isFunction(options)) {  /* Options might be a local JS 'getData' function MC20120410 */
+            options = { getData:  options };
         }
         var opts = $.extend({}, $.fn.autocomplete.defaults, options);
         return this.each(function() {
@@ -43,6 +45,10 @@
      * @type {object}
      */
     $.fn.autocomplete.defaults = {
+        /* One of these two should be filled */    /* Added MC20120410 */
+        url: null,
+        getData: null,
+        /* Other default values */
         inputClass: 'acInput',
         loadingClass: 'acLoading',
         resultsClass: 'acResults',
@@ -553,7 +559,17 @@
         var data = this.cacheRead(filter);
         if (data) {
             callback(data);
-        } else {
+        } else if($.isFunction(this.options.getData)) {
+            var self = this;
+            this.dom.$elem.addClass(this.options.loadingClass);
+            this.options.getData(filter, function(data) {
+                if (data !== false) {
+                    self.cacheWrite(filter, data);
+                }
+                self.dom.$elem.removeClass(self.options.loadingClass);
+                callback(data);
+            });
+        } else if($.type(this.options.url) === "string") {
             var self = this;
             var dataType = self.options.remoteDataType === 'json' ? 'json' : 'text';
             var ajaxCallback = function(data) {
